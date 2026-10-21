@@ -1,0 +1,6 @@
+# Python 3.10-3.12 (overcooked-ai 1.1.0 breaks on NumPy 2)
+overcooked-ai==1.1.0
+numpy<2
+scipy
+torch
+pytest
