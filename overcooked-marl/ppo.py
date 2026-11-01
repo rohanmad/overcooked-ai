@@ -30,7 +30,12 @@ class RolloutBuffer:
     def add(self, obs, action, log_prob, reward, done, value):
         # TODO: Save one timestep of experience by appending each argument to its matching list above
         # (obs to self.obs, action to self.actions, and so on). get() below turns the lists into tensors later.
-        raise NotImplementedError
+        self.obs.append(obs)
+        self.actions.append(action)
+        self.log_probs.append(log_prob)
+        self.rewards.append(reward)
+        self.dones.append(done)
+        self.values.append(value)  
 
     def get(self, gamma, gae_lambda):
         """Returns a dict of tensors: obs, actions, log_probs, advantages, returns."""
