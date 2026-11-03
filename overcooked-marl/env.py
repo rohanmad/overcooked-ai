@@ -32,14 +32,6 @@ class OvercookedMultiAgentEnv:
         arrays = self.base_env.featurize_state_mdp(self.base_env.state) # converts the state of the current game into numbers by returning a list of two arrays
         return {agent: arr.astype(np.float32) for agent, arr in zip (AGENTS, arrays)} # makes array pairs through a for loop and converts it to np.float32, returning the dict to the method call
 
-        # Takeaways (these are my own personal notes to help me understand the code)
-        # AI uses numbers to see and understand the game, reset() starts a new game and returns what each chef sees
-        # reset() resets the game, converts the state into numbers, and puts them as a dict of two agents to their arrays
-        # dict is labeled storage like d["agent_0"]
-        # zip(a, b) puts two lists side by side and gives pairs
-        # game gives float64, but the neural network wants float32
-        # X is a counter, O is an onion dispenser, D is the dish dispenser, S is the serving spot, P is the pot, arrows 0 and 1 are the two chefs
-
     def step(self, actions):
         """
         actions: {agent: int in 0..5}
