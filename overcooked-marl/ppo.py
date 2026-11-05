@@ -99,7 +99,56 @@ def ppo_loss(model, batch, config):
     # Total loss = policy_loss + vf_coef * value_loss - ent_coef * entropy.mean(). Also return a stats dict of
     # plain floats (.item()), including approx_kl = mean((ratio - 1) - log(ratio)), a measure of how far the
     # policy moved. Compute it inside torch.no_grad().
-    raise NotImplementedError
+
+    # 1. Get the model's current predictions
+    _, new_log_probs, entropy, new_values = model.get_action_and_value(
+        batch["obs"], batch["actions"]
+    )
+
+    # 2. Compare new and old action probabilities
+    ratio = torch.exp(new_log_probs - batch["log_probs"])
+
+    # 3. Normalize advantages
+    adv = batch["advantages"]
+    adv = (adv - adv.mean()) / (adv.std(unbiased=False) + 1e-8)
+
+    # 4. Clipped policy loss
+    policy_loss = torch.max(
+        -adv * ratio,
+        -adv * torch.clamp(
+            ratio,
+            1 - config.clip_coef,
+            1 + config.clip_coef
+        )
+    ).mean()
+
+    # 5. Value loss
+    value_loss = 0.5 * ((new_values.reshape(-1) - batch["returns"]) ** 2).mean()
+
+    # 6. Entropy bonus
+    entropy_mean = entropy.mean()
+
+    # 7. Total loss
+    loss = (
+        policy_loss
+        + config.vf_coef * value_loss
+        - config.ent_coef * entropy_mean
+    )
+
+    # 8. Calculate approximate KL divergence
+    with torch.no_grad():
+        approx_kl = ((ratio - 1) - torch.log(ratio)).mean()
+
+    # 9. Return statistics as Python floats
+    stats = {
+        "policy_loss": policy_loss.item(),
+        "value_loss": value_loss.item(),
+        "entropy": entropy_mean.item(),
+        "approx_kl": approx_kl.item()
+    }
+
+    return loss, stats
+
 
 
 def ppo_update(model, optimizer, batch, config):
