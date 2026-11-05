@@ -61,7 +61,27 @@ def compute_gae(rewards, values, dones, gamma, gae_lambda):
     #     gae        = delta + gamma * gae_lambda * not_done * gae
     #     advantages[t] = gae
     # Return (advantages, advantages + values). The second array, the "returns", is what the critic learns to predict.
-    raise NotImplementedError
+    advantages = np.zeros_like(rewards, dtype=np.float32)
+    gae = 0.0
+
+    for t in reversed(range(len(rewards))):
+        if t == len(rewards) - 1:
+            next_value = 0
+        else:
+            next_value = values[t + 1]
+
+        not_done = 1 - dones[t]
+
+        delta = rewards[t] + gamma * next_value * not_done - values[t]
+
+        gae = delta + gamma * gae_lambda * not_done * gae
+
+        advantages[t] = gae
+
+    returns = advantages + values
+
+    return advantages, returns
+
 
 
 def ppo_loss(model, batch, config):
