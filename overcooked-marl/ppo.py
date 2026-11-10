@@ -90,4 +90,33 @@ def ppo_update(model, optimizer, batch, config):
     # those rows of every tensor in batch ({k: v[idx] for k, v in batch.items()}). Then: compute ppo_loss,
     # optimizer.zero_grad(), loss.backward(), nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm),
     # optimizer.step(). Keep every stats dict, and return one dict with the average of each stat.
-    raise NotImplementedError
+    n = batch["obs"].shape[0]
+    all_stats = []
+
+    for epoch in range(config.update_epochs):
+        indices = torch.randperm(n)
+        minibatches = torch.chunk(indices, config.num_minibatches)
+
+        for idx in minibatches:
+            minibatch = {k: v[idx] for k, v in batch.items()}
+
+            loss, stats = ppo_loss(model, minibatch, config)
+
+            optimizer.zero_grad()
+            loss.backward()
+
+            nn.utils.clip_grad_norm_(
+                model.parameters(),
+                config.max_grad_norm
+            )
+
+            optimizer.step()
+
+            all_stats.append(stats)
+
+    avg_stats = {
+        key: float(np.mean([s[key] for s in all_stats]))
+        for key in all_stats[0]
+    }
+
+    return avg_stats
