@@ -18,27 +18,12 @@ class OvercookedMultiAgentEnv:
 
     def reset(self):
         """Returns obs: {agent: float32 array of shape (OBS_DIM,)}."""
-        # TODO: Start a new game and return what each chef "sees". The game lives in self.base_env, so call
-        # self.base_env.reset() first. Then turn the current game state (self.base_env.state) into numbers with
-        # self.base_env.featurize_state_mdp(state). That returns a list of two arrays, one per chef, each
-        # describing the kitchen from that chef's point of view. Return them as a dict mapping "agent_0" and
-        # "agent_1" to their arrays, converted to np.float32. step() needs the same thing, so a small helper
-        # method is a good idea.
-        
-        self.base_env.reset() # starts a new game
-        return self._get_obs() # calls helper method which turns the game into numbers
+        self.base_env.reset()
+        return self._get_obs()
 
-    def _get_obs(self): # helper method
-        arrays = self.base_env.featurize_state_mdp(self.base_env.state) # converts the state of the current game into numbers by returning a list of two arrays
-        return {agent: arr.astype(np.float32) for agent, arr in zip (AGENTS, arrays)} # makes array pairs through a for loop and converts it to np.float32, returning the dict to the method call
-
-        # Takeaways (these are my own personal notes to help me understand the code)
-        # AI uses numbers to see and understand the game, reset() starts a new game and returns what each chef sees
-        # reset() resets the game, converts the state into numbers, and puts them as a dict of two agents to their arrays
-        # dict is labeled storage like d["agent_0"]
-        # zip(a, b) puts two lists side by side and gives pairs
-        # game gives float64, but the neural network wants float32
-        # X is a counter, O is an onion dispenser, D is the dish dispenser, S is the serving spot, P is the pot, arrows 0 and 1 are the two chefs
+    def _get_obs(self):
+        arrays = self.base_env.featurize_state_mdp(self.base_env.state)
+        return {agent: arr.astype(np.float32) for agent, arr in zip (AGENTS, arrays)}
 
     def step(self, actions):
         """
@@ -48,12 +33,14 @@ class OvercookedMultiAgentEnv:
             done:    True when the episode hits the horizon
             info:    {"sparse_reward": float}
         """
-        # TODO: Move the game forward one timestep. Our agents pick actions as integers 0-5, but the game wants
-        # its own action objects, so convert each one with Action.INDEX_TO_ACTION[i]. Then call
-        # self.base_env.step(joint_action), where joint_action is a tuple (agent_0's action, agent_1's action).
-        # It returns (state, sparse_reward, done, info). sparse_reward is the soup reward (20 per delivered soup),
-        # shared by both chefs because this is a team game. info["shaped_r_by_agent"] is a list of two small bonus
-        # rewards for useful steps like putting an onion in the pot. Each chef's reward is the soup reward plus
-        # self.shaped_reward_coef times its own bonus. Return the new observations, the rewards dict, done, and
-        # {"sparse_reward": sparse_reward}.
-        raise NotImplementedError
+        joint_action = (
+            Action.INDEX_TO_ACTION[actions["agent_0"]],
+            Action.INDEX_TO_ACTION[actions["agent_1"]],
+        )
+        state, sparse_reward, done, info = self.base_env.step(joint_action)
+        shaped = info["shaped_r_by_agent"]
+        rewards = {
+            agent: sparse_reward + self.shaped_reward_coef * bonus
+            for agent, bonus in zip(AGENTS, shaped)
+        }
+        return self._get_obs(), rewards, done, {"sparse_reward": sparse_reward}
