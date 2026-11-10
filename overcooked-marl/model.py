@@ -44,4 +44,14 @@ class ActorCritic(nn.Module):
         # with dist.sample(). While learning, PPO passes in actions taken earlier, so use those instead. Return
         # the action, dist.log_prob(action) (log of how likely the policy thinks that action is), dist.entropy()
         # (how spread out the probabilities are, i.e. how much it's still exploring), and value.
-        raise NotImplementedError
+        logits, value = self(obs)
+
+        dist = Categorical(logits=logits)
+
+        if action is None:
+            action = dist.sample()
+
+        log_prob = dist.log_prob(action)
+        entropy = dist.entropy()
+
+        return action, log_prob, entropy, value
